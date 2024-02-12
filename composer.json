@@ -1,0 +1,8 @@
+{
+    "name": "nadia/san",
+    "description": "trial",
+    "require": {
+        "salla/ouath2-merchant": "^1.4",
+        "phpoffice/phpspreadsheet": "^2.0"
+    }
+}
