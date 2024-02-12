@@ -6,7 +6,7 @@
 
 
 // Include the necessary libraries
-require_once '../vendor/autoload.php';
+require_once 'vendor/autoload.php';
 use Salla\OAuth2\Client\Provider\Salla;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
