@@ -37,7 +37,7 @@ curl_setopt_array($curl, [
 // Execute cURL and get the response
 $response = curl_exec($curl);
 $err = curl_error($curl);
-echo "Error decoding JSON response: " . json_last_error_msg();
+echo $response;
 
 // Close cURL
 curl_close($curl);
