@@ -4,13 +4,11 @@
  * Make sure to replace placeholders like 'your clientId', 'your clientSecret',
  *  and 'your refreshToken' with your actual Salla API credentials. */
 
-
 // Include the necessary libraries
 require_once 'vendor/autoload.php';
 use Salla\OAuth2\Client\Provider\Salla;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-
 
 $accessToken = getenv('Access_TOKEN');
 // Salla API endpoint to get the product list
@@ -38,7 +36,6 @@ curl_setopt_array($curl, [
 $response = curl_exec($curl);
 $err = curl_error($curl);
 
-
 // Close cURL
 curl_close($curl);
 
@@ -46,8 +43,6 @@ curl_close($curl);
 if ($err) {
     echo "cURL Error #:" . $err;
 } else {
- 
-
     // Decode the JSON data
     $jsonData = json_decode($response, true);
 
@@ -118,9 +113,11 @@ if ($err) {
         $htmlTable .= "</table>";
 
         // Export to HTML file
-        file_put_contents('product_data.html', $htmlTable);
+        $htmlFilePath = '/tmp/product_data.html';
+        file_put_contents($htmlFilePath, $htmlTable);
 
         // Export to Excel file
+        $excelFilePath = '/tmp/product_data.xlsx';
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
 
@@ -146,44 +143,7 @@ if ($err) {
             // Extract and process product information
             $productId = $productInfo['id'];
             $productName = $productInfo['name'];
-            $productPriceBeforeDiscount = $productInfo['regular_price']['amount'];
-            $productPriceAfterDiscount = $productInfo['price']['amount'];
-            $quantity = $productInfo['quantity'];
-
-            // Fetch categories information
-            $categoriesNames = [];
-            $categoriesIds = [];
-            if (isset($productInfo['categories']) && is_array($productInfo['categories'])) {
-                foreach ($productInfo['categories'] as $category) {
-                    $categoriesNames[] = $category['name'];
-                    $categoriesIds[] = $category['id'];
-                }
-            }
-
-            $promotionTitle = $productInfo['promotion']['title'] ?? '';
-            $metadataTitle = $productInfo['metadata']['title'] ?? '';
-            $metadataDescription = $productInfo['metadata']['description'] ?? '';
-            $description = $productInfo['description'];
-            $productImageURLs = array_column($productInfo['images'], 'url');
-
-            // Add product information to Excel sheet
-            $sheet->setCellValue('A' . $row, $productId);
-            $sheet->setCellValue('B' . $row, $productName);
-            $sheet->setCellValue('C' . $row, $productPriceBeforeDiscount);
-            $sheet->setCellValue('D' . $row, $productPriceAfterDiscount);
-            $sheet->setCellValue('E' . $row, $quantity);
-            $sheet->setCellValue('F' . $row, implode("\n", $categoriesNames));
-            $sheet->setCellValue('G' . $row, implode("\n", $categoriesIds));
-            $sheet->setCellValue('H' . $row, $promotionTitle);
-            $sheet->setCellValue('I' . $row, $metadataTitle);
-            $sheet->setCellValue('J' . $row, $metadataDescription);
-            $sheet->setCellValue('K' . $row, $description);
-            $sheet->setCellValue('L' . $row, implode("\n", $productImageURLs));
-
-            // Increment row counter
-            $row++;
-        }
-
+            $productPriceBefore
         // Save Excel file
         $writer = new Xlsx($spreadsheet);
         $writer->save('product_data.xlsx');
