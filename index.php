@@ -185,19 +185,28 @@ if ($err) {
         $writer = new Xlsx($spreadsheet);
         $writer->save($excelFilePath);
 
-        // Prompt download for HTML file
-        // header("Content-Type: text/html");
-        // header("Content-Disposition: attachment; filename=\"" . basename($htmlFilePath) . "\"");
-        // header("Content-Length: " . filesize($htmlFilePath));
-        // readfile($htmlFilePath);
+        // Create a ZIP archive
+$zip = new ZipArchive();
+$zipFileName = "files.zip";
+if ($zip->open($zipFileName, ZipArchive::CREATE) === TRUE) {
+    // Add the HTML file to the ZIP archive
+    $zip->addFile($htmlFilePath, basename($htmlFilePath));
+    // Add the Excel file to the ZIP archive
+    $zip->addFile($excelFilePath, basename($excelFilePath));
+    $zip->close();
 
-        // Prompt download for Excel file
-        header("Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-        header("Content-Disposition: attachment; filename=\"" . basename($excelFilePath) . "\"");
-        header("Content-Length: " . filesize($excelFilePath));
-        readfile($excelFilePath);
+    // Set headers to prompt the user to download the ZIP archive
+    header('Content-Type: application/zip');
+    header('Content-disposition: attachment; filename=' . $zipFileName);
+    header('Content-Length: ' . filesize($zipFileName));
 
-        echo 'Exported HTML table and Excel file successfully.';
-    }
+    // Read and output the contents of the ZIP archive
+    readfile($zipFileName);
+
+    // Delete the ZIP archive after download
+    unlink($zipFileName);
+} else {
+    // Failed to create ZIP file
+    echo "Failed to create ZIP file";
 }
 ?>
