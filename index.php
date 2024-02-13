@@ -185,9 +185,17 @@ if ($err) {
         $writer = new Xlsx($spreadsheet);
         $writer->save($excelFilePath);
 
-        // Output download links for both files
-        echo '<a href="' . 'product_data.html' . '">Download HTML File</a><br>';
-        echo '<a href="' . 'product_data.xlsx'. '">Download Excel File</a>';
+        // Prompt download for HTML file
+        header("Content-Type: text/html");
+        header("Content-Disposition: attachment; filename=\"" . basename($htmlFilePath) . "\"");
+        header("Content-Length: " . filesize($htmlFilePath));
+        readfile($htmlFilePath);
+
+        // Prompt download for Excel file
+        header("Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        header("Content-Disposition: attachment; filename=\"" . basename($excelFilePath) . "\"");
+        header("Content-Length: " . filesize($excelFilePath));
+        readfile($excelFilePath);
 
         echo 'Exported HTML table and Excel file successfully.';
     }
