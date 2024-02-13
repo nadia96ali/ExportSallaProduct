@@ -116,6 +116,12 @@ if ($err) {
         $htmlFilePath = '/tmp/product_data.html';
         file_put_contents($htmlFilePath, $htmlTable);
 
+        // Prompt download for HTML file
+        header("Content-Type: application/octet-stream");
+        header("Content-Transfer-Encoding: Binary");
+        header("Content-disposition: attachment; filename=\"" . basename($htmlFilePath) . "\"");
+        readfile($htmlFilePath);
+
         // Export to Excel file
         $excelFilePath = '/tmp/product_data.xlsx';
         $spreadsheet = new Spreadsheet();
@@ -143,10 +149,53 @@ if ($err) {
             // Extract and process product information
             $productId = $productInfo['id'];
             $productName = $productInfo['name'];
-            $productPriceBefore
+            $productPriceBeforeDiscount = $productInfo['regular_price']['amount'];
+            $productPriceAfterDiscount = $productInfo['price']['amount'];
+            $quantity = $productInfo['quantity'];
+
+            // Fetch categories information
+            $categoriesNames = [];
+            $categoriesIds = [];
+            if (isset($productInfo['categories']) && is_array($productInfo['categories'])) {
+                foreach ($productInfo['categories'] as $category) {
+                    $categoriesNames[] = $category['name'];
+                    $categoriesIds[] = $category['id'];
+                }
+            }
+
+            $promotionTitle = $productInfo['promotion']['title'] ?? '';
+            $metadataTitle = $productInfo['metadata']['title'] ?? '';
+            $metadataDescription = $productInfo['metadata']['description'] ?? '';
+            $description = $productInfo['description'];
+            $productImageURLs = array_column($productInfo['images'], 'url');
+
+            // Add product information to Excel sheet
+            $sheet->setCellValue('A' . $row, $productId);
+            $sheet->setCellValue('B' . $row, $productName);
+            $sheet->setCellValue('C' . $row, $productPriceBeforeDiscount);
+            $sheet->setCellValue('D' . $row, $productPriceAfterDiscount);
+            $sheet->setCellValue('E' . $row, $quantity);
+            $sheet->setCellValue('F' . $row, implode("\n", $categoriesNames));
+            $sheet->setCellValue('G' . $row, implode("\n", $categoriesIds));
+            $sheet->setCellValue('H' . $row, $promotionTitle);
+            $sheet->setCellValue('I' . $row, $metadataTitle);
+            $sheet->setCellValue('J' . $row, $metadataDescription);
+            $sheet->setCellValue('K' . $row, $description);
+            $sheet->setCellValue('L' . $row, implode("\n", $productImageURLs));
+
+            // Increment row counter
+            $row++;
+        }
+
         // Save Excel file
         $writer = new Xlsx($spreadsheet);
-        $writer->save('product_data.xlsx');
+        $writer->save($excelFilePath);
+
+        // Prompt download for Excel file
+        header("Content-Type: application/octet-stream");
+        header("Content-Transfer-Encoding: Binary");
+        header("Content-disposition: attachment; filename=\"" . basename($excelFilePath) . "\"");
+        readfile($excelFilePath);
 
         echo 'Exported HTML table and Excel file successfully.';
     }
