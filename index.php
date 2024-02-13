@@ -186,8 +186,8 @@ if ($err) {
         $writer->save($excelFilePath);
 
         // Output download links for both files
-        echo '<a href="' . $htmlFilePath . '">Download HTML File</a><br>';
-        echo '<a href="' . $excelFilePath . '">Download Excel File</a>';
+        echo '<a href="' . 'product_data.html' . '">Download HTML File</a><br>';
+        echo '<a href="' . 'product_data.xlsx'. '">Download Excel File</a>';
 
         echo 'Exported HTML table and Excel file successfully.';
     }
