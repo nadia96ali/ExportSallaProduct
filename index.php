@@ -186,10 +186,10 @@ if ($err) {
         $writer->save($excelFilePath);
 
         // Prompt download for HTML file
-        header("Content-Type: text/html");
-        header("Content-Disposition: attachment; filename=\"" . basename($htmlFilePath) . "\"");
-        header("Content-Length: " . filesize($htmlFilePath));
-        readfile($htmlFilePath);
+        // header("Content-Type: text/html");
+        // header("Content-Disposition: attachment; filename=\"" . basename($htmlFilePath) . "\"");
+        // header("Content-Length: " . filesize($htmlFilePath));
+        // readfile($htmlFilePath);
 
         // Prompt download for Excel file
         header("Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
