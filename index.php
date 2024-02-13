@@ -4,13 +4,15 @@
  * Make sure to replace placeholders like 'your clientId', 'your clientSecret',
  *  and 'your refreshToken' with your actual Salla API credentials. */
 
+
 // Include the necessary libraries
 require_once 'vendor/autoload.php';
-use Salla\OAuth2\Client\Provider\Salla;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
+// Get access token from environment variable
 $accessToken = getenv('Access_TOKEN');
+
 // Salla API endpoint to get the product list
 $apiEndpoint = "https://api.salla.dev/admin/v2/products";
 
@@ -50,8 +52,32 @@ if ($err) {
     if ($jsonData === null || !isset($jsonData['data']) || !is_array($jsonData['data'])) {
         echo 'Error decoding JSON response or invalid data structure.';
     } else {
-        // Create an HTML table header
-        $htmlTable = "<table border='1'>
+        // Process product data
+        $htmlTable = generateHtmlTable($jsonData['data']);
+        $excelFilePath = generateExcelFile($jsonData['data']);
+
+        // Create a ZIP archive containing the HTML and Excel files
+        $zipFilePath = createZipArchive($htmlTable, $excelFilePath);
+        if ($zipFilePath) {
+            // Prompt the user to download the ZIP archive
+            header('Content-Type: application/zip');
+            header('Content-Disposition: attachment; filename="product_data.zip"');
+            header('Content-Length: ' . filesize($zipFilePath));
+            readfile($zipFilePath);
+
+            // Clean up temporary files
+            unlink($zipFilePath);
+            unlink($htmlFilePath);
+            unlink($excelFilePath);
+        } else {
+            echo "Failed to create ZIP file";
+        }
+    }
+}
+
+function generateHtmlTable($data) {
+    // Create an HTML table header
+    $htmlTable = "<table border='1'>
             <tr>
                 <th>Product SKU</th>
                 <th>Product Name</th>
@@ -67,37 +93,37 @@ if ($err) {
                 <th>Product Image URLs</th>
             </tr>";
 
-        // Iterate over each product
-        foreach ($jsonData['data'] as $productInfo) {
-            // Extract and process product information
-            $productId = $productInfo['id'];
-            $productName = $productInfo['name'];
-            $productPriceBeforeDiscount = $productInfo['regular_price']['amount'];
-            $productPriceAfterDiscount = $productInfo['price']['amount'];
-            $quantity = $productInfo['quantity'];
+    // Iterate over each product
+    foreach ($data as $productInfo) {
+        // Extract and process product information
+        $productId = $productInfo['id'];
+        $productName = $productInfo['name'];
+        $productPriceBeforeDiscount = $productInfo['regular_price']['amount'];
+        $productPriceAfterDiscount = $productInfo['price']['amount'];
+        $quantity = $productInfo['quantity'];
 
-            // Fetch categories information
-            $categoriesNames = [];
-            $categoriesIds = [];
-            if (isset($productInfo['categories']) && is_array($productInfo['categories'])) {
-                foreach ($productInfo['categories'] as $category) {
-                    $categoriesNames[] = $category['name'];
-                    $categoriesIds[] = $category['id'];
-                }
+        // Fetch categories information
+        $categoriesNames = [];
+        $categoriesIds = [];
+        if (isset($productInfo['categories']) && is_array($productInfo['categories'])) {
+            foreach ($productInfo['categories'] as $category) {
+                $categoriesNames[] = $category['name'];
+                $categoriesIds[] = $category['id'];
             }
+        }
 
-            $promotionTitle = $productInfo['promotion']['title'] ?? '';
-            $metadataTitle = $productInfo['metadata']['title'] ?? '';
-            $metadataDescription = $productInfo['metadata']['description'] ?? '';
-            $description = $productInfo['description'];
-            $productImageURLs = array_column($productInfo['images'], 'url');
+        $promotionTitle = $productInfo['promotion']['title'] ?? '';
+        $metadataTitle = $productInfo['metadata']['title'] ?? '';
+        $metadataDescription = $productInfo['metadata']['description'] ?? '';
+        $description = $productInfo['description'];
+        $productImageURLs = array_column($productInfo['images'], 'url');
 
-            // Add product information to HTML table
-            $htmlTable .= "<tr>
+        // Add product information to HTML table
+        $htmlTable .= "<tr>
                 <td>{$productId}</td>
                 <td>{$productName}</td>
-                <td>{$productPriceBeforeDiscount} {$productInfo['regular_price']['currency']}</td>
-                <td>{$productPriceAfterDiscount} {$productInfo['price']['currency']}</td>
+                <td>{$productPriceBeforeDiscount}</td>
+                <td>{$productPriceAfterDiscount}</td>
                 <td>{$quantity}</td>
                 <td>" . implode('<br>', $categoriesNames) . "</td>
                 <td>" . implode('<br>', $categoriesIds) . "</td>
@@ -107,106 +133,100 @@ if ($err) {
                 <td>{$description}</td>
                 <td>" . implode('<br>', $productImageURLs) . "</td>
             </tr>";
-        }
+    }
 
-        // Close HTML table
-        $htmlTable .= "</table>";
+    // Close HTML table
+    $htmlTable .= "</table>";
 
-        // Export to HTML file
-        $htmlFilePath = '/tmp/product_data.html';
-        file_put_contents($htmlFilePath, $htmlTable);
+    // Export to HTML file
+    $htmlFilePath = '/tmp/product_data.html';
+    file_put_contents($htmlFilePath, $htmlTable);
 
-        // Export to Excel file
-        $excelFilePath = '/tmp/product_data.xlsx';
-        $spreadsheet = new Spreadsheet();
-        $sheet = $spreadsheet->getActiveSheet();
+    return $htmlTable;
+}
 
-        // Add data to Excel sheet header
-        $sheet->setCellValue('A1', 'Product SKU');
-        $sheet->setCellValue('B1', 'Product Name');
-        $sheet->setCellValue('C1', 'Product Price Before Discount');
-        $sheet->setCellValue('D1', 'Product Price After Discount');
-        $sheet->setCellValue('E1', 'Quantity');
-        $sheet->setCellValue('F1', 'Categories Names');
-        $sheet->setCellValue('G1', 'Categories Ids');
-        $sheet->setCellValue('H1', 'Promotion Title');
-        $sheet->setCellValue('I1', 'Metadata Title');
-        $sheet->setCellValue('J1', 'Metadata Description');
-        $sheet->setCellValue('K1', 'Description');
-        $sheet->setCellValue('L1', 'Product Image URLs');
+function generateExcelFile($data) {
+    // Export to Excel file
+    $excelFilePath = '/tmp/product_data.xlsx';
+    $spreadsheet = new Spreadsheet();
+    $sheet = $spreadsheet->getActiveSheet();
 
-        // Initialize row counter
-        $row = 2;
+    // Add data to Excel sheet header
+    $sheet->setCellValue('A1', 'Product SKU');
+    $sheet->setCellValue('B1', 'Product Name');
+    $sheet->setCellValue('C1', 'Product Price Before Discount');
+    $sheet->setCellValue('D1', 'Product Price After Discount');
+    $sheet->setCellValue('E1', 'Quantity');
+    $sheet->setCellValue('F1', 'Categories Names');
+    $sheet->setCellValue('G1', 'Categories Ids');
+    $sheet->setCellValue('H1', 'Promotion Title');
+    $sheet->setCellValue('I1', 'Metadata Title');
+    $sheet->setCellValue('J1', 'Metadata Description');
+    $sheet->setCellValue('K1', 'Description');
+    $sheet->setCellValue('L1', 'Product Image URLs');
 
-        // Iterate over each product for Excel
-        foreach ($jsonData['data'] as $productInfo) {
-            // Extract and process product information
-            $productId = $productInfo['id'];
-            $productName = $productInfo['name'];
-            $productPriceBeforeDiscount = $productInfo['regular_price']['amount'];
-            $productPriceAfterDiscount = $productInfo['price']['amount'];
-            $quantity = $productInfo['quantity'];
+    // Initialize row counter
+    $row = 2;
 
-            // Fetch categories information
-            $categoriesNames = [];
-            $categoriesIds = [];
-            if (isset($productInfo['categories']) && is_array($productInfo['categories'])) {
-                foreach ($productInfo['categories'] as $category) {
-                    $categoriesNames[] = $category['name'];
-                    $categoriesIds[] = $category['id'];
-                }
+    // Iterate over each product for Excel
+    foreach ($data as $productInfo) {
+        // Extract and process product information
+        $productId = $productInfo['id'];
+        $productName = $productInfo['name'];
+        $productPriceBeforeDiscount = $productInfo['regular_price']['amount'];
+        $productPriceAfterDiscount = $productInfo['price']['amount'];
+        $quantity = $productInfo['quantity'];
+
+        // Fetch categories information
+        $categoriesNames = [];
+        $categoriesIds = [];
+        if (isset($productInfo['categories']) && is_array($productInfo['categories'])) {
+            foreach ($productInfo['categories'] as $category) {
+                $categoriesNames[] = $category['name'];
+                $categoriesIds[] = $category['id'];
             }
-
-            $promotionTitle = $productInfo['promotion']['title'] ?? '';
-            $metadataTitle = $productInfo['metadata']['title'] ?? '';
-            $metadataDescription = $productInfo['metadata']['description'] ?? '';
-            $description = $productInfo['description'];
-            $productImageURLs = array_column($productInfo['images'], 'url');
-
-            // Add product information to Excel sheet
-            $sheet->setCellValue('A' . $row, $productId);
-            $sheet->setCellValue('B' . $row, $productName);
-            $sheet->setCellValue('C' . $row, $productPriceBeforeDiscount);
-            $sheet->setCellValue('D' . $row, $productPriceAfterDiscount);
-            $sheet->setCellValue('E' . $row, $quantity);
-            $sheet->setCellValue('F' . $row, implode("\n", $categoriesNames));
-            $sheet->setCellValue('G' . $row, implode("\n", $categoriesIds));
-            $sheet->setCellValue('H' . $row, $promotionTitle);
-            $sheet->setCellValue('I' . $row, $metadataTitle);
-            $sheet->setCellValue('J' . $row, $metadataDescription);
-            $sheet->setCellValue('K' . $row, $description);
-            $sheet->setCellValue('L' . $row, implode("\n", $productImageURLs));
-
-            // Increment row counter
-            $row++;
         }
 
-        // Save Excel file
-        $writer = new Xlsx($spreadsheet);
-        $writer->save($excelFilePath);
+        $promotionTitle = $productInfo['promotion']['title'] ?? '';
+        $metadataTitle = $productInfo['metadata']['title'] ?? '';
+        $metadataDescription = $productInfo['metadata']['description'] ?? '';
+        $description = $productInfo['description'];
+        $productImageURLs = array_column($productInfo['images'], 'url');
 
-        // Create a ZIP archive
-$zip = new ZipArchive();
-$zipFileName = "files.zip";
-if ($zip->open($zipFileName, ZipArchive::CREATE) === TRUE) {
-    // Add the HTML file to the ZIP archive
-    $zip->addFile($htmlFilePath, basename($htmlFilePath));
-    // Add the Excel file to the ZIP archive
-    $zip->addFile($excelFilePath, basename($excelFilePath));
-    $zip->close();
+        // Add product information to Excel sheet
+        $sheet->setCellValue('A' . $row, $productId);
+        $sheet->setCellValue('B' . $row, $productName);
+        $sheet->setCellValue('C' . $row, $productPriceBeforeDiscount);
+        $sheet->setCellValue('D' . $row, $productPriceAfterDiscount);
+        $sheet->setCellValue('E' . $row, $quantity);
+        $sheet->setCellValue('F' . $row, implode("\n", $categoriesNames));
+        $sheet->setCellValue('G' . $row, implode("\n", $categoriesIds));
+        $sheet->setCellValue('H' . $row, $promotionTitle);
+        $sheet->setCellValue('I' . $row, $metadataTitle);
+        $sheet->setCellValue('J' . $row, $metadataDescription);
+        $sheet->setCellValue('K' . $row, $description);
+        $sheet->setCellValue('L' . $row, implode("\n", $productImageURLs));
 
-    // Set headers to prompt the user to download the ZIP archive
-    header('Content-Type: application/zip');
-    header('Content-disposition: attachment; filename=' . $zipFileName);
-    header('Content-Length: ' . filesize($zipFileName));
+        // Increment row counter
+        $row++;
+    }
 
-    // Read and output the contents of the ZIP archive
-    readfile($zipFileName);
+    // Save Excel file
+    $writer = new Xlsx($spreadsheet);
+    $writer->save($excelFilePath);
 
-    // Delete the ZIP archive after download
-    unlink($zipFileName);
-} else {
-    // Failed to create ZIP file
-    echo "Failed to create ZIP file";
+    return $excelFilePath;
+}
+
+function createZipArchive($htmlTable, $excelFilePath) {
+    $zip = new ZipArchive();
+    $zipFileName = "/tmp/product_data.zip";
+    if ($zip->open($zipFileName, ZipArchive::CREATE) === TRUE) {
+        $zip->addFromString('product_data.html', $htmlTable);
+        $zip->addFile($excelFilePath, 'product_data.xlsx');
+        $zip->close();
+        return $zipFileName;
+    }
+    return null;
 }
 ?>
