@@ -37,7 +37,7 @@ curl_setopt_array($curl, [
 // Execute cURL and get the response
 $response = curl_exec($curl);
 $err = curl_error($curl);
-echo $response.'n';
+
 
 // Close cURL
 curl_close($curl);
