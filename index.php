@@ -116,12 +116,6 @@ if ($err) {
         $htmlFilePath = '/tmp/product_data.html';
         file_put_contents($htmlFilePath, $htmlTable);
 
-        // Prompt download for HTML file
-        header("Content-Type: application/octet-stream");
-        header("Content-Transfer-Encoding: Binary");
-        header("Content-disposition: attachment; filename=\"" . basename($htmlFilePath) . "\"");
-        readfile($htmlFilePath);
-
         // Export to Excel file
         $excelFilePath = '/tmp/product_data.xlsx';
         $spreadsheet = new Spreadsheet();
@@ -191,10 +185,16 @@ if ($err) {
         $writer = new Xlsx($spreadsheet);
         $writer->save($excelFilePath);
 
+        // Prompt download for HTML file
+        header("Content-Type: text/html");
+        header("Content-Disposition: attachment; filename=\"" . basename($htmlFilePath) . "\"");
+        header("Content-Length: " . filesize($htmlFilePath));
+        readfile($htmlFilePath);
+
         // Prompt download for Excel file
-        header("Content-Type: application/octet-stream");
-        header("Content-Transfer-Encoding: Binary");
-        header("Content-disposition: attachment; filename=\"" . basename($excelFilePath) . "\"");
+        header("Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        header("Content-Disposition: attachment; filename=\"" . basename($excelFilePath) . "\"");
+        header("Content-Length: " . filesize($excelFilePath));
         readfile($excelFilePath);
 
         echo 'Exported HTML table and Excel file successfully.';
